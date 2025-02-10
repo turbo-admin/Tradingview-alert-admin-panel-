@@ -90,6 +90,11 @@ const Home = () => {
           onAccept={handleAccept}
           onReject={handleReject}
           isLoading={isLoading}
+          initialValues={{
+            sl: selectedAlert?.sl,
+            tp1: selectedAlert?.tp1,
+            tp2: selectedAlert?.tp2,
+          }}
         />
       </div>
     </div>
