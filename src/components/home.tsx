@@ -1,0 +1,76 @@
+import React, { useState } from "react";
+import { useAlertStore } from "@/lib/alerts";
+import { ThemeToggle } from "./ui/theme-toggle";
+import AlertListPanel from "./AlertListPanel";
+import ChartPanel from "./ChartPanel";
+import ActionPanel from "./ActionPanel";
+
+interface Alert {
+  id: string;
+  symbol: string;
+  action: "Buy" | "Sell";
+  price: number;
+  timestamp: string;
+  status: "pending" | "approved" | "rejected";
+  metrics: {
+    rsi: number;
+    macd: number;
+  };
+}
+
+const Home = () => {
+  const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleAlertSelect = (alert: Alert) => {
+    setSelectedAlert(alert);
+  };
+
+  const handleAccept = (values: { sl: string; tp1: string; tp2: string }) => {
+    setIsLoading(true);
+    if (selectedAlert) {
+      useAlertStore.getState().updateAlertStatus(selectedAlert.id, "approved");
+    }
+    setIsLoading(false);
+  };
+
+  const handleReject = () => {
+    setIsLoading(true);
+    if (selectedAlert) {
+      useAlertStore.getState().updateAlertStatus(selectedAlert.id, "rejected");
+    }
+    setIsLoading(false);
+  };
+
+  return (
+    <div className="h-screen w-full bg-background flex relative">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+      <AlertListPanel
+        onSelectAlert={handleAlertSelect}
+        selectedAlertId={selectedAlert?.id}
+      />
+      <div className="flex-1 flex flex-col">
+        <div className="flex-1">
+          <ChartPanel
+            symbol={selectedAlert?.symbol}
+            price={selectedAlert?.price}
+            direction={selectedAlert?.action.toLowerCase() as "buy" | "sell"}
+            tradingViewConfig={{
+              symbol: selectedAlert?.symbol || "BTCUSDT",
+              interval: "1D",
+            }}
+          />
+        </div>
+        <ActionPanel
+          onAccept={handleAccept}
+          onReject={handleReject}
+          isLoading={isLoading}
+        />
+      </div>
+    </div>
+  );
+};
+
+export default Home;
