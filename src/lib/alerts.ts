@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { supabase } from "./supabase";
 
 export interface Alert {
   id: string;
@@ -18,12 +19,26 @@ export interface Alert {
 
 interface AlertStore {
   alerts: Alert[];
+  loadAlerts: () => Promise<void>;
   addAlert: (alert: Omit<Alert, "id" | "timestamp" | "status">) => void;
-  updateAlertStatus: (id: string, status: Alert["status"]) => void;
+  updateAlertStatus: (id: string, status: Alert["status"]) => Promise<void>;
 }
 
 export const useAlertStore = create<AlertStore>((set) => ({
   alerts: [],
+  loadAlerts: async () => {
+    const { data, error } = await supabase
+      .from("alerts")
+      .select("*")
+      .order("timestamp", { ascending: false });
+
+    if (error) {
+      console.error("Error loading alerts:", error);
+      return;
+    }
+
+    set({ alerts: data || [] });
+  },
   addAlert: (newAlert) =>
     set((state) => ({
       alerts: [
@@ -36,10 +51,26 @@ export const useAlertStore = create<AlertStore>((set) => ({
         ...state.alerts,
       ],
     })),
-  updateAlertStatus: (id, status) =>
-    set((state) => ({
-      alerts: state.alerts.map((alert) =>
-        alert.id === id ? { ...alert, status } : alert,
-      ),
-    })),
+  updateAlertStatus: async (id, status) => {
+    try {
+      const { error } = await supabase
+        .from("alerts")
+        .update({ status })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      set((state) => ({
+        alerts: state.alerts.map((alert) =>
+          alert.id === id ? { ...alert, status } : alert,
+        ),
+      }));
+    } catch (error) {
+      console.error("Error updating alert status:", error);
+      throw error;
+    }
+  },
 }));
+
+// Load alerts when the store is initialized
+useAlertStore.getState().loadAlerts();

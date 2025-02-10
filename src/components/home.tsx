@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAlertStore } from "@/lib/alerts";
 import { ThemeToggle } from "./ui/theme-toggle";
 import AlertListPanel from "./AlertListPanel";
@@ -22,24 +22,47 @@ const Home = () => {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Load alerts when component mounts
+  useEffect(() => {
+    useAlertStore.getState().loadAlerts();
+  }, []);
+
   const handleAlertSelect = (alert: Alert) => {
     setSelectedAlert(alert);
   };
 
-  const handleAccept = (values: { sl: string; tp1: string; tp2: string }) => {
+  const handleAccept = async (values: {
+    sl: string;
+    tp1: string;
+    tp2: string;
+  }) => {
     setIsLoading(true);
-    if (selectedAlert) {
-      useAlertStore.getState().updateAlertStatus(selectedAlert.id, "approved");
+    try {
+      if (selectedAlert) {
+        await useAlertStore
+          .getState()
+          .updateAlertStatus(selectedAlert.id, "approved");
+      }
+    } catch (error) {
+      console.error("Error accepting alert:", error);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
-  const handleReject = () => {
+  const handleReject = async () => {
     setIsLoading(true);
-    if (selectedAlert) {
-      useAlertStore.getState().updateAlertStatus(selectedAlert.id, "rejected");
+    try {
+      if (selectedAlert) {
+        await useAlertStore
+          .getState()
+          .updateAlertStatus(selectedAlert.id, "rejected");
+      }
+    } catch (error) {
+      console.error("Error rejecting alert:", error);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   return (

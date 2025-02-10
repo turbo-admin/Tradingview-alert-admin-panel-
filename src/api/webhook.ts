@@ -38,51 +38,66 @@ function parseAlertMessage(message: string) {
 }
 
 export async function handleTradingViewWebhook(data: any) {
-  let alertData: TablesInsert<"alerts">;
+  try {
+    console.log("Received webhook data:", data);
 
-  // If data is a string (email format), parse it
-  if (typeof data === "string") {
-    const parsed = parseAlertMessage(data);
-    alertData = {
-      symbol: parsed.symbol,
-      action: parsed.action,
-      price: parsed.price,
-      sl: parsed.sl,
-      tp1: parsed.tp1,
-      tp2: parsed.tp2,
-      metrics: parsed.metrics,
-    };
-  } else {
-    // If data is an object (original format)
-    const { symbol, action, price, rsi, macd } = data;
-    alertData = {
-      symbol,
-      action: action as "Buy" | "Sell",
-      price: parseFloat(price),
-      metrics: {
-        rsi: parseFloat(rsi || 0),
-        macd: parseFloat(macd || 0),
-      },
-    };
+    let alertData: TablesInsert<"alerts">;
+
+    // If data is a string (email format), parse it
+    if (typeof data === "string") {
+      console.log("Parsing string data");
+      const parsed = parseAlertMessage(data);
+      alertData = {
+        symbol: parsed.symbol,
+        action: parsed.action,
+        price: parsed.price,
+        sl: parsed.sl,
+        tp1: parsed.tp1,
+        tp2: parsed.tp2,
+        metrics: parsed.metrics,
+      };
+    } else {
+      // If data is an object (original format)
+      console.log("Parsing object data");
+      const { symbol, action, price, rsi, macd } = data;
+      alertData = {
+        symbol,
+        action: action as "Buy" | "Sell",
+        price: parseFloat(price),
+        metrics: {
+          rsi: parseFloat(rsi || 0),
+          macd: parseFloat(macd || 0),
+        },
+      };
+    }
+
+    console.log("Prepared alert data:", alertData);
+
+    // Save to Supabase
+    const { data: savedAlert, error } = await supabase
+      .from("alerts")
+      .insert([alertData])
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error saving alert to Supabase:", error);
+      throw error;
+    }
+
+    console.log("Successfully saved alert:", savedAlert);
+
+    // Update local store with the saved alert data
+    useAlertStore.getState().addAlert({
+      ...alertData,
+      id: savedAlert.id,
+      timestamp: savedAlert.timestamp || new Date().toISOString(),
+      status: savedAlert.status,
+    });
+
+    return savedAlert;
+  } catch (error) {
+    console.error("Error in handleTradingViewWebhook:", error);
+    throw error;
   }
-
-  // Save to Supabase
-  const { data: savedAlert, error } = await supabase
-    .from("alerts")
-    .insert([alertData])
-    .select()
-    .single();
-
-  if (error) {
-    console.error("Error saving alert to Supabase:", error);
-    return;
-  }
-
-  // Update local store with the saved alert data
-  useAlertStore.getState().addAlert({
-    ...alertData,
-    id: savedAlert.id,
-    timestamp: savedAlert.timestamp || new Date().toISOString(),
-    status: savedAlert.status,
-  });
 }
