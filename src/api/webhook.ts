@@ -1,4 +1,6 @@
 import { useAlertStore } from "@/lib/alerts";
+import { supabase } from "@/lib/supabase";
+import type { TablesInsert } from "@/types/supabase";
 
 function parseAlertMessage(message: string) {
   // Extract symbol from first line
@@ -36,23 +38,51 @@ function parseAlertMessage(message: string) {
 }
 
 export async function handleTradingViewWebhook(data: any) {
+  let alertData: TablesInsert<"alerts">;
+
   // If data is a string (email format), parse it
   if (typeof data === "string") {
-    const parsedData = parseAlertMessage(data);
-    useAlertStore.getState().addAlert(parsedData);
+    const parsed = parseAlertMessage(data);
+    alertData = {
+      symbol: parsed.symbol,
+      action: parsed.action,
+      price: parsed.price,
+      sl: parsed.sl,
+      tp1: parsed.tp1,
+      tp2: parsed.tp2,
+      metrics: parsed.metrics,
+    };
+  } else {
+    // If data is an object (original format)
+    const { symbol, action, price, rsi, macd } = data;
+    alertData = {
+      symbol,
+      action: action as "Buy" | "Sell",
+      price: parseFloat(price),
+      metrics: {
+        rsi: parseFloat(rsi || 0),
+        macd: parseFloat(macd || 0),
+      },
+    };
+  }
+
+  // Save to Supabase
+  const { data: savedAlert, error } = await supabase
+    .from("alerts")
+    .insert([alertData])
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error saving alert to Supabase:", error);
     return;
   }
 
-  // If data is an object (original format)
-  const { symbol, action, price, rsi, macd } = data;
-
+  // Update local store with the saved alert data
   useAlertStore.getState().addAlert({
-    symbol,
-    action: action as "Buy" | "Sell",
-    price: parseFloat(price),
-    metrics: {
-      rsi: parseFloat(rsi || 0),
-      macd: parseFloat(macd || 0),
-    },
+    ...alertData,
+    id: savedAlert.id,
+    timestamp: savedAlert.timestamp || new Date().toISOString(),
+    status: savedAlert.status,
   });
 }
