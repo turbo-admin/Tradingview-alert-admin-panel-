@@ -1,69 +1,67 @@
-import * as React from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
-type Theme = "light" | "dark" | "system";
+type Theme = "dark" | "light" | "system";
 
-interface ThemeProviderProps {
+type ThemeProviderProps = {
   children: React.ReactNode;
-}
+  defaultTheme?: Theme;
+};
 
-interface ThemeProviderState {
+type ThemeProviderState = {
   theme: Theme;
   setTheme: (theme: Theme) => void;
-}
+};
 
-const ThemeContext = React.createContext<ThemeProviderState | undefined>(
-  undefined,
-);
+const initialState: ThemeProviderState = {
+  theme: "system",
+  setTheme: () => null,
+};
 
-export function ThemeProvider({ children }: ThemeProviderProps) {
-  const [theme, setTheme] = React.useState<Theme>("system");
+const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
 
-  React.useEffect(() => {
-    const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const initialTheme = isDark ? "dark" : "light";
-    setTheme(initialTheme);
-    document.documentElement.classList.toggle("dark", isDark);
+export function ThemeProvider({
+  children,
+  defaultTheme = "system",
+}: ThemeProviderProps) {
+  const [theme, setTheme] = useState<Theme>(defaultTheme);
 
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleChange = (e: MediaQueryListEvent) => {
-      if (theme === "system") {
-        document.documentElement.classList.toggle("dark", e.matches);
-      }
-    };
+  useEffect(() => {
+    const root = window.document.documentElement;
 
-    mediaQuery.addEventListener("change", handleChange);
-    return () => mediaQuery.removeEventListener("change", handleChange);
+    root.classList.remove("light", "dark");
+
+    if (theme === "system") {
+      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
+        .matches
+        ? "dark"
+        : "light";
+
+      root.classList.add(systemTheme);
+      return;
+    }
+
+    root.classList.add(theme);
   }, [theme]);
 
-  const value = React.useMemo(
-    () => ({
-      theme,
-      setTheme: (newTheme: Theme) => {
-        setTheme(newTheme);
-        if (newTheme === "dark") {
-          document.documentElement.classList.add("dark");
-        } else if (newTheme === "light") {
-          document.documentElement.classList.remove("dark");
-        } else {
-          const isDark = window.matchMedia(
-            "(prefers-color-scheme: dark)",
-          ).matches;
-          document.documentElement.classList.toggle("dark", isDark);
-        }
-      },
-    }),
-    [theme],
-  );
+  const value = {
+    theme,
+    setTheme: (theme: Theme) => {
+      setTheme(theme);
+    },
+  };
 
   return (
-    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+    <ThemeProviderContext.Provider value={value}>
+      {children}
+    </ThemeProviderContext.Provider>
   );
 }
 
 export const useTheme = () => {
-  const context = React.useContext(ThemeContext);
-  if (context === undefined) {
+  const context = useContext(ThemeProviderContext);
+
+  if (context === undefined)
     throw new Error("useTheme must be used within a ThemeProvider");
-  }
+
   return context;
 };
