@@ -37,6 +37,7 @@ export const useAlertStore = create<AlertStore>((set) => ({
       return;
     }
 
+    console.log("Loaded alerts from Supabase:", data);
     set({ alerts: data || [] });
   },
   addAlert: (newAlert) =>

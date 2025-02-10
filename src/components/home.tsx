@@ -16,6 +16,9 @@ interface Alert {
     rsi: number;
     macd: number;
   };
+  sl?: number;
+  tp1?: number;
+  tp2?: number;
 }
 
 const Home = () => {
@@ -28,6 +31,7 @@ const Home = () => {
   }, []);
 
   const handleAlertSelect = (alert: Alert) => {
+    console.log("Selected alert:", alert);
     setSelectedAlert(alert);
   };
 

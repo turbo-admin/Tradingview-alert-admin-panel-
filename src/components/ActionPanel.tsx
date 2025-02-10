@@ -21,6 +21,7 @@ const ActionPanel = ({
   isLoading = false,
   initialValues = {},
 }: ActionPanelProps) => {
+  console.log("ActionPanel initialValues:", initialValues);
   const [values, setValues] = React.useState({
     sl: initialValues?.sl?.toString() || "",
     tp1: initialValues?.tp1?.toString() || "",
